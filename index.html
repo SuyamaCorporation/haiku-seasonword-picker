@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>季語ピッカー（俳句支援）</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-stone-50 min-h-screen font-sans">
+
+<div class="max-w-3xl mx-auto p-4">
+  <h1 class="text-2xl font-bold text-center text-stone-700 mb-1">🌸 季語ピッカー</h1>
+  <p class="text-center text-stone-500 text-sm mb-4">俳句づくりの季語選びをサポートします</p>
+
+  <!-- Season tabs -->
+  <div class="flex border-b border-stone-300 mb-4" role="tablist">
+    <button id="tab-新年" role="tab" aria-selected="true" tabindex="0"
+      class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-amber-500 text-amber-600"
+      onclick="selectSeason('新年')">新年</button>
+    <button id="tab-春" role="tab" aria-selected="false" tabindex="0"
+      class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-stone-500 hover:text-stone-700"
+      onclick="selectSeason('春')">春</button>
+    <button id="tab-夏" role="tab" aria-selected="false" tabindex="0"
+      class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-stone-500 hover:text-stone-700"
+      onclick="selectSeason('夏')">夏</button>
+    <button id="tab-秋" role="tab" aria-selected="false" tabindex="0"
+      class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-stone-500 hover:text-stone-700"
+      onclick="selectSeason('秋')">秋</button>
+    <button id="tab-冬" role="tab" aria-selected="false" tabindex="0"
+      class="tab-btn px-4 py-2 text-sm font-medium border-b-2 border-transparent text-stone-500 hover:text-stone-700"
+      onclick="selectSeason('冬')">冬</button>
+  </div>
+
+  <!-- Random display -->
+  <div class="flex items-center gap-2 mb-3">
+    <button onclick="shuffleDisplay()" aria-label="季語をランダム表示"
+      class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition">
+      🔀 ランダム表示
+    </button>
+    <span class="text-stone-500 text-sm">クリックで俳句エリアに追加</span>
+  </div>
+
+  <!-- Kigo display grid -->
+  <div id="kigo-grid" class="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-6"></div>
+
+  <!-- Haiku compose area -->
+  <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-4 mb-4">
+    <h2 class="text-base font-semibold text-stone-700 mb-2">俳句作成エリア</h2>
+    <div id="selected-kigo" class="text-xs text-amber-600 mb-2 min-h-[1.5rem]"></div>
+    <textarea id="haiku-input" rows="3" maxlength="200"
+      placeholder="季語を選んで俳句を作りましょう…（5・7・5）"
+      class="w-full border border-stone-200 rounded-lg p-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-400"
+      aria-label="俳句入力欄"></textarea>
+    <div class="flex gap-2 mt-2">
+      <button onclick="saveHaiku()" aria-label="俳句を保存"
+        class="px-4 py-1.5 bg-stone-700 hover:bg-stone-800 text-white rounded-lg text-sm transition">
+        保存
+      </button>
+      <button onclick="clearHaiku()" aria-label="入力をクリア"
+        class="px-4 py-1.5 bg-stone-200 hover:bg-stone-300 text-stone-700 rounded-lg text-sm transition">
+        クリア
+      </button>
+    </div>
+  </div>
+
+  <!-- Saved haiku list -->
+  <div class="bg-white rounded-xl shadow-sm border border-stone-200 p-4">
+    <div class="flex justify-between items-center mb-3">
+      <h2 class="text-base font-semibold text-stone-700">保存した俳句 <span id="haiku-count" class="text-stone-400 text-sm font-normal"></span></h2>
+      <button onclick="clearAllHaiku()" aria-label="保存した俳句を全て削除"
+        class="text-xs text-red-400 hover:text-red-600 transition">全削除</button>
+    </div>
+    <div id="haiku-list" class="space-y-2"></div>
+    <p id="haiku-empty" class="text-stone-400 text-sm text-center py-4">まだ俳句が保存されていません</p>
+  </div>
+</div>
+
+<script>
+  const KIGO_DB = {
+    '新年': [
+      '初日の出','初夢','お正月','年賀状','雑煮','初詣','門松','鏡餅',
+      '初笑い','初富士','七草','成人の日','冬至','注連飾り',
+      '初春','寿','初風','春の海','福笑い','初空'
+    ],
+    '春': [
+      '桜','霞','うぐいす','菜の花','春雨','春風','蝶','燕',
+      '春霞','花見','蓬','たんぽぽ','蛙','陽炎','花吹雪',
+      '土筆','若草','春暁','朧月','春の海'
+    ],
+    '夏': [
+      '向日葵','蝉','夕立','花火','海水浴','蛍','梅雨','真夏',
+      '夏祭り','入道雲','スイカ','金魚','朝顔','蚊取り線香','青葉',
+      '夏草','五月雨','炎天','夜光虫','南風'
+    ],
+    '秋': [
+      '紅葉','月見','コスモス','松茸','柿','栗','秋雨','赤とんぼ',
+      '稲穂','秋風','虫の声','秋の空','木枯らし','霜','銀杏',
+      '冷露','秋刀魚','渡り鳥','秋深し','落葉'
+    ],
+    '冬': [
+      '雪','冬枯れ','みかん','ストーブ','冬の海','吹雪','霜柱','鍋',
+      '冬の夜','枯れ葉','年の暮れ','大晦日','冬至','枯れ木',
+      '冬鳥','氷','息白し','冬将軍','北風','焚き火'
+    ]
+  };
+
+  const SEASON_COLORS = {
+    '新年': 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200',
+    '春':   'bg-pink-100 text-pink-800 border-pink-300 hover:bg-pink-200',
+    '夏':   'bg-cyan-100 text-cyan-800 border-cyan-300 hover:bg-cyan-200',
+    '秋':   'bg-orange-100 text-orange-800 border-orange-300 hover:bg-orange-200',
+    '冬':   'bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200'
+  };
+
+  let currentSeason = '新年';
+  let displayedKigo = [];
+  let selectedKigo = [];
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function selectSeason(season) {
+    currentSeason = season;
+    selectedKigo = [];
+    updateSelectedDisplay();
+
+    // Update tab styles
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('border-amber-500', 'text-amber-600');
+      btn.classList.add('border-transparent', 'text-stone-500');
+      btn.setAttribute('aria-selected', 'false');
+    });
+    const activeTab = document.getElementById('tab-' + season);
+    activeTab.classList.remove('border-transparent', 'text-stone-500');
+    activeTab.classList.add('border-amber-500', 'text-amber-600');
+    activeTab.setAttribute('aria-selected', 'true');
+
+    shuffleDisplay();
+  }
+
+  function shuffleDisplay() {
+    const pool = [...KIGO_DB[currentSeason]];
+    // Fisher-Yates shuffle
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    displayedKigo = pool.slice(0, 5);
+    renderKigoGrid();
+  }
+
+  function renderKigoGrid() {
+    const grid = document.getElementById('kigo-grid');
+    grid.innerHTML = '';
+    const colorClass = SEASON_COLORS[currentSeason];
+    displayedKigo.forEach(kigo => {
+      const btn = document.createElement('button');
+      btn.className = `border rounded-lg py-2 px-1 text-sm font-medium transition ${colorClass}`;
+      btn.textContent = kigo;
+      btn.setAttribute('aria-label', `季語「${kigo}」を追加`);
+      btn.setAttribute('tabindex', '0');
+      btn.addEventListener('click', () => addKigoToHaiku(kigo));
+      grid.appendChild(btn);
+    });
+  }
+
+  function addKigoToHaiku(kigo) {
+    if (!selectedKigo.includes(kigo)) {
+      selectedKigo.push(kigo);
+    }
+    updateSelectedDisplay();
+    const textarea = document.getElementById('haiku-input');
+    if (!textarea.value.includes(kigo)) {
+      const cur = textarea.value;
+      textarea.value = cur ? cur + ' ' + kigo : kigo;
+    }
+  }
+
+  function updateSelectedDisplay() {
+    const el = document.getElementById('selected-kigo');
+    if (selectedKigo.length === 0) {
+      el.textContent = '';
+    } else {
+      el.textContent = '選択中の季語: ' + selectedKigo.map(k => escapeHtml(k)).join('・');
+    }
+  }
+
+  function saveHaiku() {
+    const text = document.getElementById('haiku-input').value.trim();
+    if (!text) return;
+    const haikus = loadHaikus();
+    if (haikus.length >= 30) {
+      alert('保存上限（30件）に達しました。古い俳句を削除してください。');
+      return;
+    }
+    haikus.unshift({
+      text,
+      season: currentSeason,
+      kigo: [...selectedKigo],
+      date: new Date().toLocaleDateString('ja-JP')
+    });
+    localStorage.setItem('haiku_list', JSON.stringify(haikus));
+    clearHaiku();
+    renderHaikuList();
+  }
+
+  function clearHaiku() {
+    document.getElementById('haiku-input').value = '';
+    selectedKigo = [];
+    updateSelectedDisplay();
+  }
+
+  function clearAllHaiku() {
+    if (!confirm('保存した俳句を全て削除しますか？')) return;
+    localStorage.removeItem('haiku_list');
+    renderHaikuList();
+  }
+
+  function deleteHaiku(index) {
+    const haikus = loadHaikus();
+    haikus.splice(index, 1);
+    localStorage.setItem('haiku_list', JSON.stringify(haikus));
+    renderHaikuList();
+  }
+
+  function loadHaikus() {
+    try {
+      return JSON.parse(localStorage.getItem('haiku_list') || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  function renderHaikuList() {
+    const haikus = loadHaikus();
+    const list = document.getElementById('haiku-list');
+    const empty = document.getElementById('haiku-empty');
+    const count = document.getElementById('haiku-count');
+    count.textContent = `(${haikus.length}/30)`;
+
+    if (haikus.length === 0) {
+      list.innerHTML = '';
+      empty.classList.remove('hidden');
+      return;
+    }
+    empty.classList.add('hidden');
+    list.innerHTML = '';
+    haikus.forEach((h, i) => {
+      const div = document.createElement('div');
+      div.className = 'flex items-start gap-2 p-2 bg-stone-50 rounded-lg border border-stone-100';
+      div.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <p class="text-sm text-stone-800 whitespace-pre-wrap">${escapeHtml(h.text)}</p>
+          <p class="text-xs text-stone-400 mt-0.5">${escapeHtml(h.season)} · ${escapeHtml(h.date)}${h.kigo && h.kigo.length ? ' · ' + h.kigo.map(k => escapeHtml(k)).join('・') : ''}</p>
+        </div>
+        <button onclick="deleteHaiku(${i})" aria-label="この俳句を削除"
+          class="text-stone-300 hover:text-red-400 transition text-lg leading-none flex-shrink-0">×</button>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  // Init
+  shuffleDisplay();
+  renderHaikuList();
+</script>
+</body>
+</html>
